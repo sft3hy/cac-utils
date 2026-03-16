@@ -14,6 +14,11 @@ def index():
     return send_from_directory(".", "viewer.html")
 
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "healthy"}), 200
+
+
 @app.route("/api/smartcard/read", methods=["GET"])
 def read_smartcard():
     try:

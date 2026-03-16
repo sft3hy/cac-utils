@@ -28,12 +28,16 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /api/smartcard/read
+              path: /health
               port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /api/smartcard/read
+              path: /health
               port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           # Smart card reader access requires privileged mode or specific device mounting
