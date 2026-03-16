@@ -1,0 +1,22 @@
+services:
+  api:
+    build: .
+    container_name: cac-api
+    environment:
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=8000
+    # privileged: true is often needed for PC/SC access on Linux hosts
+    privileged: true
+    restart: unless-stopped
+
+  web:
+    image: nginx:alpine
+    container_name: cac-web
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./viewer.html:/usr/share/nginx/html/viewer.html:ro
+    depends_on:
+      - api
+    restart: unless-stopped

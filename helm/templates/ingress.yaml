@@ -1,0 +1,42 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "cac-utils.fullname" . }}-gateway
+  labels:
+    {{- include "cac-utils.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.externalDnsTarget }}
+    external-dns.alpha.kubernetes.io/target: {{ .Values.ingress.externalDnsTarget | quote }}
+    {{- end }}
+
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+
+spec:
+  ingressClassName: {{ .Values.ingress.className | default "nginx" }}
+
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "cac-utils.fullname" $ }}
+                port:
+                  number: 80
+          {{- end }}
+    {{- end }}
+
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- toYaml .Values.ingress.tls | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,63 @@
+replicaCount: 1
+
+image:
+  repository: harbor.i2cv.io/cosmichorizon/cac-utils
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: "cosmichorizon-nginx"
+
+  # Needed for external-dns annotation
+  externalDnsTarget: test-cosmichorizon-worker-68a3110f01feebd0.elb.us-gov-west-1.amazonaws.com
+
+  annotations:
+    cert-manager.io/issuer: "airbud-selfsigned"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "off"
+    # Timeouts to fail faster than "forever"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "15"
+    # Client Certificate Auth
+    nginx.ingress.kubernetes.io/auth-tls-verify-client: "on"
+    nginx.ingress.kubernetes.io/auth-tls-verify-depth: "4"
+    nginx.ingress.kubernetes.io/auth-tls-secret: "cosmichorizon/airbud-client-ca"
+    nginx.ingress.kubernetes.io/auth-tls-pass-certificate-to-upstream: "false" # Set to false to avoid huge headers interfering with handshake, we construct our own below
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
+      proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
+      # Debugging Headers
+      add_header X-Ingress-Request-Time $request_time always;
+      add_header X-Ingress-Upstream-Time $upstream_response_time always;
+
+  hosts:
+    - host: test-cosmichorizon-worker-68a3110f01feebd0.elb.us-gov-west-1.amazonaws.com
+      paths:
+        - path: /cac-utils
+          pathType: Prefix
+
+  tls:
+    - hosts:
+        - test-cosmichorizon-worker-68a3110f01feebd0.elb.us-gov-west-1.amazonaws.com
+      secretName: airbud-server-cert
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+imagePullSecrets:
+  - name: s-hxl2n

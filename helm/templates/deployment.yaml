@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cac-utils.fullname" . }}
+  labels:
+    {{- include "cac-utils.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cac-utils.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cac-utils.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/smartcard/read
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /api/smartcard/read
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          # Smart card reader access requires privileged mode or specific device mounting
+          securityContext:
+            privileged: true

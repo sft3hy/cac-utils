@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Card Reader</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #111118;
+            --border: #1e1e2e;
+            --accent: #00d4ff;
+            --accent2: #7c3aed;
+            --success: #00ff88;
+            --warn: #ffaa00;
+            --danger: #ff4466;
+            --text: #e2e8f0;
+            --muted: #4a5568;
+            --dim: #2d3748;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'IBM Plex Sans', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(0, 212, 255, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(124, 58, 237, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 720px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            margin-bottom: 40px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            border: 1px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), transparent);
+        }
+
+        .logo svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .header-text h1 {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            color: var(--text);
+        }
+
+        .header-text p {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 4px;
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+
+        .status-bar {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--muted);
+            flex-shrink: 0;
+            transition: background 0.3s;
+        }
+
+        .status-dot.active {
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.warn {
+            background: var(--warn);
+        }
+
+        .status-dot.error {
+            background: var(--danger);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        #statusText {
+            color: var(--muted);
+            flex: 1;
+        }
+
+        .browser-warning {
+            background: rgba(255, 170, 0, 0.06);
+            border: 1px solid rgba(255, 170, 0, 0.25);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .browser-warning.visible {
+            display: block;
+        }
+
+        .browser-warning h3 {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--warn);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .browser-warning p {
+            font-size: 13px;
+            color: #a0856a;
+            line-height: 1.6;
+        }
+
+        .browser-warning code {
+            background: rgba(255, 170, 0, 0.1);
+            padding: 1px 5px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--warn);
+        }
+
+        .card-zone {
+            border: 1px dashed var(--dim);
+            padding: 48px 24px;
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+            transition: border-color 0.3s, background 0.3s;
+            cursor: default;
+        }
+
+        .card-zone.reading {
+            border-color: var(--accent);
+            background: rgba(0, 212, 255, 0.02);
+        }
+
+        .card-icon {
+            margin: 0 auto 20px;
+            width: 64px;
+            height: 44px;
+            border: 1.5px solid var(--dim);
+            border-radius: 6px;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+
+        .card-icon::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 10px;
+            width: 20px;
+            height: 14px;
+            border: 1.5px solid var(--dim);
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.03);
+            transition: border-color 0.3s, background 0.3s;
+        }
+
+        .card-zone.reading .card-icon,
+        .card-zone.reading .card-icon::before {
+            border-color: var(--accent);
+        }
+
+        .card-zone.reading .card-icon::before {
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .card-zone h2 {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .card-zone p {
+            font-size: 13px;
+            color: var(--dim);
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 12px auto 0;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner.active {
+            display: block;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 11px 28px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            background: rgba(0, 212, 255, 0.08);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        /* Results */
+        .results {
+            display: none;
+        }
+
+        .results.visible {
+            display: block;
+        }
+
+        .section-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* Email highlight card */
+        .email-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(124, 58, 237, 0.04));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .email-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        .email-card .label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .email-card .value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        .email-card .copy-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            border: 1px solid var(--dim);
+            color: var(--muted);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            padding: 4px 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+        }
+
+        .email-card .copy-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Data table */
+        .data-table {
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            overflow: hidden;
+        }
+
+        .data-row {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        .data-row:last-child {
+            border-bottom: none;
+        }
+
+        .data-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .data-key {
+            padding: 10px 14px;
+            color: var(--muted);
+            font-weight: 500;
+            border-right: 1px solid var(--border);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-val {
+            padding: 10px 14px;
+            color: var(--text);
+            word-break: break-all;
+            font-weight: 300;
+        }
+
+        .data-val.highlight {
+            color: var(--success);
+        }
+
+        .data-val.mono {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+        }
+
+        .cert-block {
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .cert-header {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+        }
+
+        .cert-header:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .cert-header .cert-title {
+            color: var(--text);
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .cert-content {
+            display: none;
+        }
+
+        .cert-content.open {
+            display: block;
+        }
+
+        .no-email {
+            background: rgba(255, 68, 102, 0.05);
+            border: 1px solid rgba(255, 68, 102, 0.2);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            color: #ff8899;
+        }
+
+        .error-box {
+            background: rgba(255, 68, 102, 0.05);
+            border: 1px solid rgba(255, 68, 102, 0.2);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-box.visible {
+            display: block;
+        }
+
+        .error-box h3 {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            color: var(--danger);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .error-box p {
+            font-size: 13px;
+            color: #ff8899;
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--dim);
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 480px) {
+            .data-row {
+                grid-template-columns: 1fr;
+            }
+
+            .data-key {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .email-card .value {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="grid-bg"></div>
+    <div class="container">
+
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                    style="color: var(--accent)">
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <rect x="5" y="9" width="7" height="5" rx="1" fill="rgba(0,212,255,0.15)" stroke="currentColor" />
+                    <line x1="16" y1="9" x2="19" y2="9" />
+                    <line x1="16" y1="12" x2="19" y2="12" />
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>Smart Card Reader</h1>
+                <p>Reads PIV / CAC / PKCS#15 cards — extracts certificates &amp; identity info</p>
+            </div>
+        </header>
+
+        <div class="browser-warning" id="browserWarning">
+            <h3>⚠ Browser Compatibility</h3>
+            <p>The Web Smart Card API requires <strong>Chrome or Edge 120+</strong> on desktop. Your current browser may
+                not support it. For best results, open this page in Chrome. The API also requires a
+                <code>secure context</code> (HTTPS or localhost).</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Ready — insert your smart card and click Read</span>
+        </div>
+
+        <div class="card-zone" id="cardZone">
+            <div class="card-icon"></div>
+            <h2 id="cardZoneTitle">Insert Smart Card</h2>
+            <p id="cardZoneSubtitle">PIV, CAC, or PKCS#15 card supported</p>
+            <div class="spinner" id="spinner"></div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn" id="readBtn" onclick="readCard()">Read Card</button>
+            <button class="btn" id="clearBtn" onclick="clearResults()"
+                style="border-color:var(--dim);color:var(--muted)">Clear</button>
+        </div>
+
+        <div class="error-box" id="errorBox">
+            <h3>Error</h3>
+            <p id="errorText"></p>
+        </div>
+
+        <div class="results" id="results">
+
+            <div class="section-label">Primary Email</div>
+
+            <div id="emailSection"></div>
+
+            <div class="section-label">Card Identity</div>
+            <div class="data-table" id="identityTable"></div>
+
+            <div class="section-label">Certificates (<span id="certCount">0</span>)</div>
+            <div id="certsContainer"></div>
+
+            <div class="section-label">Raw ATR</div>
+            <div class="data-table" id="atrTable"></div>
+
+        </div>
+
+        <div class="footer">
+            All processing is local — no data is sent to any server.<br>
+            Requires a PC/SC reader and the Web Smart Card API (Chrome/Edge 120+).
+        </div>
+
+    </div>
+
+    <script>
+        // ─── Utility ──────────────────────────────────────────────────────────────────
+
+        function hex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+        }
+
+        function setStatus(text, type = '') {
+            const dot = document.getElementById('statusDot');
+            dot.className = 'status-dot' + (type ? ' ' + type : '');
+            document.getElementById('statusText').textContent = text;
+        }
+
+        function setZone(reading) {
+            const z = document.getElementById('cardZone');
+            const s = document.getElementById('spinner');
+            z.classList.toggle('reading', reading);
+            s.classList.toggle('active', reading);
+            document.getElementById('cardZoneTitle').textContent = reading ? 'Reading card…' : 'Insert Smart Card';
+            document.getElementById('cardZoneSubtitle').textContent = reading ? 'Please wait, do not remove the card' : 'PIV, CAC, or PKCS#15 card supported';
+        }
+
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.classList.add('visible');
+            document.getElementById('errorText').textContent = msg;
+            setStatus('Error — see details below', 'error');
+        }
+
+        function clearResults() {
+            document.getElementById('results').classList.remove('visible');
+            document.getElementById('errorBox').classList.remove('visible');
+            setStatus('Ready — insert your smart card and click Read');
+            setZone(false);
+            document.getElementById('statusDot').className = 'status-dot';
+        }
+
+        // ─── ASN.1 / DER parser (minimal, for certificate fields) ────────────────────
+
+        function parseDER(buf, offset = 0) {
+            const nodes = [];
+            while (offset < buf.length) {
+                const tag = buf[offset++];
+                if (offset >= buf.length) break;
+                let len = buf[offset++];
+                if (len & 0x80) {
+                    const numBytes = len & 0x7f;
+                    len = 0;
+                    for (let i = 0; i < numBytes; i++) len = (len << 8) | buf[offset++];
+                }
+                const value = buf.slice(offset, offset + len);
+                nodes.push({ tag, len, value, offset });
+                offset += len;
+            }
+            return nodes;
+        }
+
+        function findTag(buf, ...tags) {
+            // DFS search for a specific tag sequence
+            function search(b, depth, tagPath) {
+                if (depth >= tagPath.length) return b;
+                const nodes = parseDER(b);
+                for (const n of nodes) {
+                    if (n.tag === tagPath[depth]) {
+                        const result = search(n.value, depth + 1, tagPath);
+                        if (result !== null) return result;
+                    }
+                    // recurse into constructed types
+                    if (n.tag & 0x20) {
+                        const result = search(n.value, depth, tagPath);
+                        if (result !== null) return result;
+                    }
+                }
+                return null;
+            }
+            return search(buf, 0, tags);
+        }
+
+        function parseOID(bytes) {
+            const oids = {
+                '2.5.4.3': 'Common Name', '2.5.4.6': 'Country', '2.5.4.7': 'Locality',
+                '2.5.4.8': 'State', '2.5.4.10': 'Organization', '2.5.4.11': 'Org Unit',
+                '1.2.840.113549.1.9.1': 'Email', '2.5.29.17': 'Subject Alt Name',
+                '2.5.29.19': 'Basic Constraints', '2.5.29.15': 'Key Usage',
+                '1.2.840.113549.1.1.11': 'SHA256withRSA', '1.2.840.113549.1.1.5': 'SHA1withRSA',
+                '1.2.840.10040.4.3': 'DSA', '1.2.840.10045.4.3.2': 'ECDSA-SHA256',
+            };
+            let val = 0, first = true, oidStr = '';
+            for (const b of bytes) {
+                val = (val << 7) | (b & 0x7f);
+                if (!(b & 0x80)) {
+                    if (first) { oidStr = Math.floor(val / 40) + '.' + (val % 40); first = false; }
+                    else oidStr += '.' + val;
+                    val = 0;
+                }
+            }
+            return oids[oidStr] ? `${oids[oidStr]} (${oidStr})` : oidStr;
+        }
+
+        function utf8(bytes) {
+            try { return new TextDecoder('utf-8').decode(bytes); } catch { return ''; }
+        }
+
+        // ─── Extract emails from a certificate DER buffer ────────────────────────────
+
+        function extractEmails(certDer) {
+            const emails = new Set();
+
+            // Walk all nodes looking for SAN (tag 0x55, 0x1d, 0x11 = OID 2.5.29.17)
+            // and rfc822Name (tag 0x81 in GeneralNames)
+            function walk(buf) {
+                let off = 0;
+                while (off < buf.length) {
+                    const tag = buf[off++];
+                    if (off >= buf.length) break;
+                    let len = buf[off++];
+                    if (len & 0x80) {
+                        const nb = len & 0x7f; len = 0;
+                        for (let i = 0; i < nb && off < buf.length; i++) len = (len << 8) | buf[off++];
+                    }
+                    const val = buf.slice(off, off + len);
+                    off += len;
+
+                    // rfc822Name has tag 0x81
+                    if (tag === 0x81) {
+                        const e = utf8(val);
+                        if (e.includes('@')) emails.add(e);
+                    }
+                    // Also check emailAddress in subject (IA5String after OID 1.2.840.113549.1.9.1)
+                    if (tag === 0x16) { // IA5String
+                        const e = utf8(val);
+                        if (e.includes('@')) emails.add(e);
+                    }
+                    // UTF8String
+                    if (tag === 0x0c) {
+                        const e = utf8(val);
+                        if (e.includes('@')) emails.add(e);
+                    }
+
+                    // Recurse into sequences / sets / context-constructed
+                    if ((tag & 0x20) || (tag & 0xa0) === 0xa0) {
+                        walk(val);
+                    }
+                }
+            }
+
+            walk(certDer);
+            return [...emails];
+        }
+
+        // ─── Parse Subject fields from cert ──────────────────────────────────────────
+
+        function parseSubject(certDer) {
+            const fields = {};
+            // Certificate → TBSCertificate (seq[0]) → subject (seq[5])
+            // We do a simple DFS looking for SEQUENCE > SET > SEQUENCE > OID + value
+
+            function walkRDN(buf) {
+                const nodes = parseDER(buf);
+                for (const n of nodes) {
+                    if (n.tag === 0x31) { // SET
+                        const inner = parseDER(n.value);
+                        for (const seq of inner) {
+                            if (seq.tag === 0x30) {
+                                const pair = parseDER(seq.value);
+                                if (pair.length >= 2 && pair[0].tag === 0x06) {
+                                    const oidLabel = parseOID(pair[0].value);
+                                    const valNode = pair[1];
+                                    let strVal = '';
+                                    if ([0x0c, 0x13, 0x16, 0x1e, 0x1b].includes(valNode.tag)) {
+                                        strVal = utf8(valNode.value);
+                                    }
+                                    if (strVal) fields[oidLabel] = strVal;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Find the subject: it's the 6th element in TBSCertificate
+            try {
+                const cert = parseDER(certDer);
+                if (!cert.length) return fields;
+                const tbs = parseDER(cert[0].value);
+                // subject is typically index 5 (version[0], serialNumber, signature, issuer, validity, subject)
+                // but version is optional, so we need to find by walking
+                let subjectIdx = -1;
+                let seqCount = 0;
+                for (let i = 0; i < tbs.length; i++) {
+                    if (tbs[i].tag === 0x30) {
+                        seqCount++;
+                        if (seqCount === 2) { subjectIdx = i; break; } // issuer=1st, subject=2nd SEQUENCE
+                    }
+                }
+                if (subjectIdx >= 0) walkRDN(tbs[subjectIdx].value);
+            } catch (e) { }
+            return fields;
+        }
+
+        // ─── Parse cert validity dates ────────────────────────────────────────────────
+
+        function parseValidity(certDer) {
+            try {
+                const cert = parseDER(certDer);
+                const tbs = parseDER(cert[0].value);
+                let count = 0;
+                for (const n of tbs) {
+                    if (n.tag === 0x30) {
+                        count++;
+                        if (count === 1) { // validity SEQUENCE
+                            const dates = parseDER(n.value);
+                            if (dates.length >= 2) {
+                                return {
+                                    notBefore: utf8(dates[0].value),
+                                    notAfter: utf8(dates[1].value)
+                                };
+                            }
+                        }
+                    }
+                }
+            } catch (e) { }
+            return {};
+        }
+
+        function formatASN1Date(s) {
+            if (!s) return '—';
+            try {
+                // UTCTime: YYMMDDHHMMSSZ or GeneralizedTime: YYYYMMDDHHMMSSZ
+                if (s.length === 13) s = (parseInt(s.slice(0, 2)) >= 50 ? '19' : '20') + s;
+                return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)} ${s.slice(8, 10)}:${s.slice(10, 12)} UTC`;
+            } catch { return s; }
+        }
+
+        // ─── APDU helpers ─────────────────────────────────────────────────────────────
+
+        async function transmit(channel, apdu) {
+            const cmd = new Uint8Array(apdu);
+            const resp = await channel.transmit(cmd);
+            return new Uint8Array(resp);
+        }
+
+        function sw(resp) {
+            if (resp.length < 2) return 0;
+            return (resp[resp.length - 2] << 8) | resp[resp.length - 1];
+        }
+
+        function swOK(resp) {
+            const s = sw(resp);
+            return s === 0x9000 || (s & 0xff00) === 0x6100 || (s & 0xff00) === 0x6C00;
+        }
+
+        function getData(resp) {
+            if (resp.length <= 2) return new Uint8Array(0);
+            return resp.slice(0, resp.length - 2);
+        }
+
+        // ─── Read certificate from PIV card ──────────────────────────────────────────
+
+        async function readPIVCert(channel, tag) {
+            // SELECT PIV AID
+            await transmit(channel, [0x00, 0xA4, 0x04, 0x00, 0x09, 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x00]);
+
+            // GET DATA for the given tag
+            const getDataAPDU = [0x00, 0xCB, 0x3F, 0xFF, 0x05, 0x5C, 0x03, 0x5F, tag >> 8 & 0xff, tag & 0xff, 0x00];
+            let resp = await transmit(channel, getDataAPDU);
+
+            let data = new Uint8Array(0);
+
+            if (swOK(resp)) {
+                data = getData(resp);
+                // Handle chained responses
+                while ((sw(resp) & 0xff00) === 0x6100) {
+                    const remain = sw(resp) & 0xff;
+                    const getMore = [0x00, 0xC0, 0x00, 0x00, remain || 0x00];
+                    resp = await transmit(channel, getMore);
+                    const more = getData(resp);
+                    const combined = new Uint8Array(data.length + more.length);
+                    combined.set(data); combined.set(more, data.length);
+                    data = combined;
+                }
+            }
+
+            return data;
+        }
+
+        // Extract raw DER cert from PIV TLV container
+        function extractCertFromPIVContainer(data) {
+            if (!data.length) return null;
+            // PIV container: 53 xx [71 xx certDER] [72 xx certInfo] ...
+            let off = 0;
+            while (off < data.length) {
+                const tag = data[off++];
+                let len = data[off++];
+                if (len & 0x80) {
+                    const nb = len & 0x7f; len = 0;
+                    for (let i = 0; i < nb; i++) len = (len << 8) | data[off++];
+                }
+                if (tag === 0x71) return data.slice(off, off + len); // Certificate value
+                off += len;
+            }
+            return null;
+        }
+
+        // ─── Main read function ───────────────────────────────────────────────────────
+
+        async function readCard() {
+            clearResults();
+            setZone(true);
+            setStatus('Requesting smart card data from local API...', 'active');
+            document.getElementById('readBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/smartcard/read');
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || `HTTP ${response.status} - Local API returned an error`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || "Unknown error reading from local API");
+                }
+
+                setStatus('Card read successfully', 'active');
+                setZone(false);
+                
+                // Format response to match the existing renderResults expectations
+                renderResults({ 
+                    cardInfo: data.cardInfo, 
+                    certs: data.certs, 
+                    allEmails: data.allEmails || [], 
+                    atr: data.atr, 
+                    reader: data.reader 
+                });
+
+            } catch (err) {
+                setZone(false);
+                setStatus('Failed to read card', 'inactive');
+                showError(err.message || String(err));
+                
+                if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                    showError("Could not connect to the local Python API. Is 'server.py' running? (Run: python3 server.py)");
+                }
+            } finally {
+                document.getElementById('readBtn').disabled = false;
+            }
+        }
+
+        // ─── Render ───────────────────────────────────────────────────────────────────
+
+        function renderResults({ cardInfo, certs, allEmails, atr, reader }) {
+            const res = document.getElementById('results');
+            res.classList.add('visible');
+
+            // Email section
+            const emailSec = document.getElementById('emailSection');
+            if (allEmails.length) {
+                emailSec.innerHTML = allEmails.map((e, i) => `
+      <div class="email-card">
+        <div class="label">Email Address${allEmails.length > 1 ? ` #${i + 1}` : ''}</div>
+        <div class="value">${e}</div>
+        <button class="copy-btn" onclick="copyText('${e}', this)">Copy</button>
+      </div>
+    `).join('');
+            } else {
+                emailSec.innerHTML = `<div class="no-email">No email address found on this card. The card may not contain an email-enabled certificate, or it may not be a PIV/CAC card.</div>`;
+            }
+
+            // Identity table
+            const idTable = document.getElementById('identityTable');
+            const idRows = [
+                ['Reader', reader || '—'],
+                ['Protocol', cardInfo.protocol || '—'],
+                ['Card Type', cardInfo.type || (certs.length ? 'PIV / CAC' : 'Unknown')],
+                ['Certificates Found', certs.length],
+            ];
+            if (cardInfo.note) idRows.push(['Note', cardInfo.note]);
+            idTable.innerHTML = idRows.map(([k, v]) => `
+    <div class="data-row">
+      <div class="data-key">${k}</div>
+      <div class="data-val">${v}</div>
+    </div>
+  `).join('');
+
+            // Certs
+            document.getElementById('certCount').textContent = certs.length;
+            const certsContainer = document.getElementById('certsContainer');
+            certsContainer.innerHTML = certs.map((c, i) => {
+                const subjectRows = Object.entries(c.subject).map(([k, v]) => `
+      <div class="data-row">
+        <div class="data-key">${k}</div>
+        <div class="data-val">${v}</div>
+      </div>`).join('');
+
+                const emailRows = c.emails.length
+                    ? c.emails.map(e => `<div class="data-row"><div class="data-key">Email (SAN)</div><div class="data-val highlight">${e}</div></div>`).join('')
+                    : '';
+
+                return `
+      <div class="cert-block">
+        <div class="cert-header" onclick="toggleCert(${i})">
+          <span class="cert-title">${c.name}</span>
+          <span>${c.emails.length ? '✉ ' + c.emails[0] : 'No email'} · ${c.derLen} bytes</span>
+        </div>
+        <div class="cert-content" id="cert-${i}">
+          <div class="data-table">
+            ${emailRows}
+            ${subjectRows}
+            <div class="data-row">
+              <div class="data-key">Valid From</div>
+              <div class="data-val mono">${formatASN1Date(c.validity.notBefore)}</div>
+            </div>
+            <div class="data-row">
+              <div class="data-key">Valid Until</div>
+              <div class="data-val mono">${formatASN1Date(c.validity.notAfter)}</div>
+            </div>
+            <div class="data-row">
+              <div class="data-key">Size</div>
+              <div class="data-val mono">${c.derLen} bytes DER</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+            }).join('') || '<p style="color:var(--muted);font-size:13px;padding:12px 0">No certificates found.</p>';
+
+            // ATR
+            document.getElementById('atrTable').innerHTML = `
+    <div class="data-row">
+      <div class="data-key">ATR</div>
+      <div class="data-val mono">${atr || '—'}</div>
+    </div>`;
+        }
+
+        function toggleCert(i) {
+            const el = document.getElementById('cert-' + i);
+            el.classList.toggle('open');
+        }
+
+        function copyText(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 1500);
+            });
+        }
+
+        // ─── Browser check ────────────────────────────────────────────────────────────
+
+        (function () {
+            const supported = 'smartCard' in navigator;
+            const isChromium = /Chrome|Edg/.test(navigator.userAgent);
+            if (!supported || !isChromium) {
+                document.getElementById('browserWarning').classList.add('visible');
+            }
+        })();
+    </script>
+</body>
+
+</html>

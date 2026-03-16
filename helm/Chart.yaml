@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cac-utils
+description: A Helm chart for Smart Card Reader (CAC/PIV) utility
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
