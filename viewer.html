@@ -452,12 +452,39 @@
     <div class="error-toast" id="errorToast"></div>
 
     <script>
+        // ─── Path Enforcement ──────────────────────────────────────────────────────────
+
+        // Force trailing slash for consistent relative pathing in K8s sub-paths
+        if (window.location.pathname === '/cac-utils') {
+            window.location.replace('/cac-utils/');
+        }
+
+        // Helper to construct API URLs correctly
+        function getApiUrl(endpoint) {
+            // When running at /cac-utils/, relative 'api/...' works.
+            // If running at root, 'api/...' still works.
+            return endpoint;
+        }
+
         async function readCard() {
             setLoading(true);
             updateStatus('READING HARDWARE...', 'active');
 
             try {
-                const response = await fetch('/api/smartcard/read');
+                // Using relative path 'api/...' is safest when at /cac-utils/
+                const url = getApiUrl('api/smartcard/read');
+                console.log("Fetching from:", url);
+                
+                const response = await fetch(url);
+
+                // Check for HTML response (usually a 404 or redirect page)
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    const text = await response.text();
+                    console.error("Non-JSON response received:", text.slice(0, 200));
+                    throw new Error("Server returned HTML instead of JSON. Check the browser console URL.");
+                }
+
                 const data = await response.json();
 
                 if (!response.ok || !data.success) throw new Error(data.error || 'Failed to read card');
@@ -480,11 +507,17 @@
             updateStatus('VERIFYING PIN...', 'active');
 
             try {
-                const response = await fetch('/api/smartcard/verify', {
+                const url = getApiUrl('api/smartcard/verify');
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ pin })
                 });
+
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error("Server returned non-JSON response.");
+                }
 
                 const data = await response.json();
 
@@ -512,13 +545,12 @@
                 const cn = cert.subject.commonName || cert.subject.userId || cert.subject.givenName || 'Unnamed Identity';
                 const issuerCn = cert.issuer.commonName || 'Unknown Issuer';
 
-                // Construct a full subject list for the table
                 const subjectDetails = Object.entries(cert.subject)
                     .map(([k, v]) => `<div class="extension-item"><span>${k}</span><span class="mono">${v}</span></div>`)
                     .join('');
 
                 const emailSection = cert.emails.length ? `
-                    <div style="margin-top: 15px; background: rgba(0, 255, 136, 0.05); padding: 10px; border-radius: 4px; border: 1px solid rgba(0, 255, 136, 0.2);">
+                <div style="margin-top: 15px; background: rgba(0, 255, 136, 0.05); padding: 10px; border-radius: 4px; border: 1px solid rgba(0, 255, 136, 0.2);">
                         <div class="data-label" style="color: var(--success)">Associated Email(s)</div>
                         ${cert.emails.map(e => `<div class="data-value highlight" style="color: var(--success); font-family: 'IBM Plex Mono';">${e}</div>`).join('')}
                     </div>

@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory, request
+from flask import Flask, jsonify, send_from_directory, request, redirect
 from flask_cors import CORS
 from read_card import read_card_data, parse_certificate, verify_pin
 import os
@@ -22,12 +22,15 @@ def handle_exception(e):
     return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/")
-@app.route("/cac-utils")
 @app.route("/cac-utils/")
 def index():
     logger.info(f"Serving index for path: {request.path}")
     # Use absolute path to ensure file is found in container
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "viewer.html")
+
+@app.route("/cac-utils")
+def redirect_to_slash():
+    return redirect("/cac-utils/", code=301)
 
 @app.route("/favicon.png")
 @app.route("/cac-utils/favicon.png")
