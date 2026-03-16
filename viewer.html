@@ -391,7 +391,7 @@
             <div class="card-header">
                 <div class="btn-group">
                     <button class="btn" id="readBtn" onclick="readCard()">Analyze Card</button>
-                    <button class="btn btn-danger" id="verifyBtn" onclick="openPinModal()">Verify PIN</button>
+                    <button class="btn btn-danger" id="verifyBtn" data-verify-pin="true" style="display: none;" onclick="openPinModal()">Verify PIN</button>
                 </div>
                 <button class="btn" style="border-color: var(--dim); color: var(--muted)"
                     onclick="clearAll()">Reset</button>
@@ -671,6 +671,7 @@
         function clearAll() {
             document.getElementById('resultsContent').style.display = 'none';
             document.getElementById('idleState').style.display = 'block';
+            document.getElementById('verifyBtn').style.display = 'none';
             updateStatus('AWAITING DEVICE', '');
             closePinModal();
         }
