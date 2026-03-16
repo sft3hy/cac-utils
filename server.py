@@ -16,16 +16,20 @@ def log_headers(response):
 
 
 @app.route("/")
+@app.route("/cac-utils")
+@app.route("/cac-utils/")
 def index():
     return send_from_directory(".", "viewer.html")
 
 
 @app.route("/health")
+@app.route("/cac-utils/health")
 def health():
     return jsonify({"status": "healthy"}), 200
 
 
 @app.route("/api/smartcard/read", methods=["GET"])
+@app.route("/cac-utils/api/smartcard/read", methods=["GET"])
 def read_smartcard():
     try:
         data = read_card_data()

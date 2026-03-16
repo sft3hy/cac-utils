@@ -948,7 +948,7 @@
             document.getElementById('readBtn').disabled = true;
 
             try {
-                const response = await fetch('/api/smartcard/read');
+                const response = await fetch('api/smartcard/read');
                 if (!response.ok) {
                     const errData = await response.json().catch(() => ({}));
                     throw new Error(errData.error || `HTTP ${response.status} - Local API returned an error`);
