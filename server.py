@@ -67,7 +67,8 @@ def get_data_from_headers():
                 "atr": "N/A (Virtual)",
                 "cardInfo": {"protocol": "HTTPS", "type": "MTLS Session"},
                 "certs": [parsed],
-                "allEmails": parsed.get("emails", [])
+                "allEmails": parsed.get("emails", []),
+                "canVerifyPin": False
             }
         except Exception as e:
             logger.error(f"Failed to parse certificate from header: {e}")
@@ -92,7 +93,8 @@ def get_data_from_headers():
                     "extensions": []
                 }
             }],
-            "allEmails": []
+            "allEmails": [],
+            "canVerifyPin": False
         }
     
     return None
@@ -109,6 +111,7 @@ def read_smartcard():
         data = read_card_data()
         if not data.get("success", False):
             return jsonify(data), 500
+        data["canVerifyPin"] = True
         return jsonify(data), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

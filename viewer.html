@@ -540,6 +540,14 @@
             document.getElementById('readerName').textContent = data.reader || 'Unknown';
             document.getElementById('atrVal').textContent = data.atr || 'N/A';
 
+            // Conditional visibility for PIN verification
+            const verifyBtn = document.getElementById('verifyBtn');
+            if (data.canVerifyPin) {
+                verifyBtn.style.display = 'inline-block';
+            } else {
+                verifyBtn.style.display = 'none';
+            }
+
             const list = document.getElementById('certsList');
             if (!data.certs || !data.certs.length) {
                 list.innerHTML = '<p style="padding: 20px; color: var(--muted); text-align: center;">No certificates found on card.</p>';
