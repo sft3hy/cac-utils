@@ -20,4 +20,11 @@ sleep 5
 
 # 3. Start the application
 echo "Starting Application with Gunicorn..."
-exec gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 4 --access-logfile - --error-logfile - server:app
+exec gunicorn --bind 0.0.0.0:8000 \
+    --workers 1 \
+    --threads 4 \
+    --timeout 30 \
+    --keep-alive 5 \
+    --access-logfile - \
+    --error-logfile - \
+    server:app
