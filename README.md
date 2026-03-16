@@ -1,12 +1,12 @@
-# CAC-Utils 🪪
+# CAC-Utils
 
 A collection of lightweight utilities for interacting with Department of Defense (DoD) Common Access Cards (CAC) and Personal Identity Verification (PIV) cards. This project provides a core Python library, a Flask-based API, and a web-based visualization tool.
 
-## 🚀 Overview
+## Overview
 
 `cac-utils` simplifies the process of reading and parsing data from smart cards. It automatically detects connected readers, selects the appropriate applet (PIV or DoD CAC), and extracts X.509 certificates for Identity, Digital Signature, and Key Management.
 
-## ✨ Features
+## Features
 
 - **Multi-Protocol Support**: Handles both PIV and legacy DoD CAC applets.
 - **Certificate Parsing**: Extracts and parses DER-encoded certificates, providing human-readable subject information and validity dates.
@@ -24,7 +24,7 @@ A collection of lightweight utilities for interacting with Department of Defense
   - `flask`: For the API server.
   - `pcscd`: (Linux only) Ensure the PCSC daemon is running.
 
-## 🏁 Quick Start
+## Quick Start
 
 ### 1. Local Installation
 
@@ -51,7 +51,7 @@ Open your browser and navigate to `http://127.0.0.1:8000` to access the **Smart 
 curl http://127.0.0.1:8000/api/smartcard/read
 ```
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 The project can be run inside a container, though it requires access to the host's USB devices or PCSC socket.
 
@@ -59,7 +59,7 @@ The project can be run inside a container, though it requires access to the host
 docker-compose up --build
 ```
 
-## ☸️ Kubernetes (Helm)
+## Kubernetes (Helm)
 
 A Helm chart is provided in the `helm/` directory.
 
@@ -71,7 +71,7 @@ The chart supports:
 - Ingress with TLS and Client Certificate Authentication (mTLS).
 - Custom Nginx configurations for large header support (often needed for certificate forwarding).
 
-## 📂 Project Structure
+## Project Structure
 
 - `read_card.py`: Core logic for card communication using `pyscard` and certificate extraction.
 - `server.py`: Flask API server exposing the `/api/smartcard/read` endpoint.
@@ -79,7 +79,7 @@ The chart supports:
 - `probe_cac.py`: CLI utility to list connected readers and probe for supported applet AIDs.
 - `nginx.conf`: Nginx configuration for serving the frontend and proxying API requests.
 
-## 🔌 API Documentation
+## API Documentation
 
 ### Read Smart Card
 `GET /api/smartcard/read`
@@ -114,7 +114,7 @@ The chart supports:
 }
 ```
 
-## 🎨 Diagnostic Viewer
+## Diagnostic Viewer
 
 The project includes a built-in futuristic web viewer. When running locally or via Docker, simply navigate to the root URL (e.g., `http://localhost:8000`) to see:
 - Real-time card status.
@@ -122,7 +122,7 @@ The project includes a built-in futuristic web viewer. When running locally or v
 - Detailed certificate subject and validity information.
 - Raw ATR (Answer to Reset) hex strings.
 
-## 🛠️ Development
+## Development
 
 ### Python Requirements
 Dependencies are managed via `requirements.txt`:
