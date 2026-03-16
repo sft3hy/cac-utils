@@ -32,6 +32,7 @@ ingress:
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
       proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
+      proxy_set_header X-SSL-Client-Cert $ssl_client_escaped_cert;
       # Debugging Headers
       add_header X-Ingress-Request-Time $request_time always;
       add_header X-Ingress-Upstream-Time $upstream_response_time always;
