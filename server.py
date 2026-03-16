@@ -5,6 +5,7 @@ import os
 import logging
 import urllib.parse
 from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.backends import default_backend
 
 # Configure logging
@@ -55,7 +56,8 @@ def get_data_from_headers():
             # Nginx $ssl_client_escaped_cert is URL encoded
             cert_pem = urllib.parse.unquote(cert_raw)
             cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
-            cert_der = cert.public_bytes(x509.Encoding.DER)
+            # FIX: x509 module does not have Encoding, it's in serialization
+            cert_der = cert.public_bytes(serialization.Encoding.DER)
             
             parsed = parse_certificate(cert_der, "Ingress MTLS Certificate")
             
@@ -81,8 +83,14 @@ def get_data_from_headers():
             "certs": [{
                 "name": "Ingress MTLS Session",
                 "subject": {"dn": client_dn},
+                "issuer": {"dn": "Unknown (DN Only Mode)"},
                 "emails": [],
-                "validity": {}
+                "validity": {"notBefore": "", "notAfter": "", "isExpired": False},
+                "advanced": {
+                    "publicKey": {"algorithm": "Unknown", "size": 0},
+                    "thumbprints": {"sha256": "N/A"},
+                    "extensions": []
+                }
             }],
             "allEmails": []
         }

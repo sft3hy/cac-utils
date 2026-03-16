@@ -537,22 +537,36 @@
             document.getElementById('idleState').style.display = 'none';
             document.getElementById('resultsContent').style.display = 'block';
 
-            document.getElementById('readerName').textContent = data.reader;
-            document.getElementById('atrVal').textContent = data.atr;
+            document.getElementById('readerName').textContent = data.reader || 'Unknown';
+            document.getElementById('atrVal').textContent = data.atr || 'N/A';
 
             const list = document.getElementById('certsList');
-            list.innerHTML = data.certs.map((cert, i) => {
-                const cn = cert.subject.commonName || cert.subject.userId || cert.subject.givenName || 'Unnamed Identity';
-                const issuerCn = cert.issuer.commonName || 'Unknown Issuer';
+            if (!data.certs || !data.certs.length) {
+                list.innerHTML = '<p style="padding: 20px; color: var(--muted); text-align: center;">No certificates found on card.</p>';
+                return;
+            }
 
-                const subjectDetails = Object.entries(cert.subject)
+            list.innerHTML = data.certs.map((cert, i) => {
+                // Defensive access
+                const subject = cert.subject || {};
+                const issuer = cert.issuer || {};
+                const validity = cert.validity || { notBefore: '', notAfter: '', isExpired: false };
+                const advanced = cert.advanced || { publicKey: {}, thumbprints: {}, extensions: [] };
+                const publicKey = advanced.publicKey || {};
+                const thumbprints = advanced.thumbprints || {};
+                const emails = cert.emails || [];
+
+                const cn = subject.commonName || subject.userId || subject.givenName || 'Unnamed Identity';
+                const issuerCn = issuer.commonName || issuer.dn || 'Unknown Issuer';
+
+                const subjectDetails = Object.entries(subject)
                     .map(([k, v]) => `<div class="extension-item"><span>${k}</span><span class="mono">${v}</span></div>`)
                     .join('');
 
-                const emailSection = cert.emails.length ? `
+                const emailSection = emails.length ? `
                 <div style="margin-top: 15px; background: rgba(0, 255, 136, 0.05); padding: 10px; border-radius: 4px; border: 1px solid rgba(0, 255, 136, 0.2);">
                         <div class="data-label" style="color: var(--success)">Associated Email(s)</div>
-                        ${cert.emails.map(e => `<div class="data-value highlight" style="color: var(--success); font-family: 'IBM Plex Mono';">${e}</div>`).join('')}
+                        ${emails.map(e => `<div class="data-value highlight" style="color: var(--success); font-family: 'IBM Plex Mono';">${e}</div>`).join('')}
                     </div>
                 ` : '';
 
@@ -560,13 +574,13 @@
                 <div class="cert-block">
                     <div class="cert-header" onclick="toggleCert(this)">
                         <div>
-                            <div class="cert-title">${cert.name}</div>
+                            <div class="cert-title">${cert.name || 'Certificate'}</div>
                             <div class="data-value highlight" style="font-size: 16px; margin-top: 2px;">${cn}</div>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            ${cert.emails.length ? `<span class="tag tag-success">✉ ${cert.emails.length}</span>` : ''}
-                            <span class="tag ${cert.validity.isExpired ? 'tag-danger' : 'tag-success'}">
-                                ${cert.validity.isExpired ? 'EXPIRED' : 'VALID'}
+                            ${emails.length ? `<span class="tag tag-success">✉ ${emails.length}</span>` : ''}
+                            <span class="tag ${validity.isExpired ? 'tag-danger' : 'tag-success'}">
+                                ${validity.isExpired ? 'EXPIRED' : 'VALID'}
                             </span>
                             <span style="color: var(--muted); font-size: 11px;">▼</span>
                         </div>
@@ -582,7 +596,7 @@
                             <div>
                                 <div class="data-label">Validity Period</div>
                                 <div class="data-value mono" style="font-size: 11px;">
-                                    ${formatDate(cert.validity.notBefore)} — ${formatDate(cert.validity.notAfter)}
+                                    ${formatDate(validity.notBefore)} — ${formatDate(validity.notAfter)}
                                 </div>
                             </div>
                         </div>
@@ -590,7 +604,7 @@
                         <div style="margin-top: 20px;">
                             <div class="data-label">Full Subject Attributes</div>
                             <div class="thumbprint-box">
-                                ${subjectDetails}
+                                ${subjectDetails || '—'}
                             </div>
                         </div>
 
@@ -598,14 +612,14 @@
                             <div>
                                 <div class="data-label">Hardware Architecture</div>
                                 <div class="data-value mono">
-                                    ${cert.advanced.publicKey.algorithm} ${cert.advanced.publicKey.size} Bit
-                                    ${cert.advanced.publicKey.curve ? ` / ${cert.advanced.publicKey.curve}` : ''}
+                                    ${publicKey.algorithm || 'Unknown'} ${publicKey.size || '?'} Bit
+                                    ${publicKey.curve ? ` / ${publicKey.curve}` : ''}
                                 </div>
                             </div>
                             <div>
                                 <div class="data-label">X.509 Fingerprint (SHA-256)</div>
                                 <div class="thumbprint-box" style="font-size: 9px; line-height: 1.2;">
-                                    ${cert.advanced.thumbprints.sha256}
+                                    ${thumbprints.sha256 || 'N/A'}
                                 </div>
                             </div>
                         </div>
