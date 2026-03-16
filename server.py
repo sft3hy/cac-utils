@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
-from read_card import read_card_data, parse_certificate
+from read_card import read_card_data, parse_certificate, verify_pin
 import os
 import logging
 import urllib.parse
@@ -29,6 +29,11 @@ def index():
     # Use absolute path to ensure file is found in container
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "viewer.html")
 
+@app.route("/favicon.png")
+@app.route("/cac-utils/favicon.png")
+def favicon():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "favicon.png")
+
 @app.route("/health")
 @app.route("/cac-utils/health")
 def health():
@@ -46,15 +51,7 @@ def get_data_from_headers():
         try:
             # Nginx $ssl_client_escaped_cert is URL encoded
             cert_pem = urllib.parse.unquote(cert_raw)
-            # Ensure it has the PEM boundaries if they were stripped or modified
-            if "-----BEGIN CERTIFICATE-----" not in cert_pem:
-                # Some ingress controllers might pass the cert in a different format, 
-                # but usually it's PEM. We'll try to load it.
-                pass
-            
             cert = x509.load_pem_x509_certificate(cert_pem.encode(), default_backend())
-            # We can use the existing parse_certificate but it expects DER bytes. 
-            # We can just get the DER back from the object or use our own logic.
             cert_der = cert.public_bytes(x509.Encoding.DER)
             
             parsed = parse_certificate(cert_der, "Ingress MTLS Certificate")
@@ -73,7 +70,6 @@ def get_data_from_headers():
     # Fallback to just the DN if cert parsing failed or was missing
     client_dn = request.headers.get('X-Ssl-Client-Dn') or request.headers.get('Ssl-Client-Subject-Dn')
     if client_dn:
-        # Create a minimal fake response based on DN
         return {
             "success": True,
             "reader": "Cloud Ingress (MTLS)",
@@ -93,28 +89,36 @@ def get_data_from_headers():
 @app.route("/api/smartcard/read", methods=["GET"])
 @app.route("/cac-utils/api/smartcard/read", methods=["GET"])
 def read_smartcard():
-    logger.info(f"Read request from: {request.remote_addr} on {request.path}")
-    
-    # 1. Try to get data from Ingress MTLS headers (Forwarded CAC)
+    logger.info(f"Read request from: {request.remote_addr}")
     header_data = get_data_from_headers()
     if header_data:
-        logger.info("Successfully extracted CAC info from Ingress headers.")
         return jsonify(header_data), 200
 
-    # 2. Fallback to local hardware reader (Physical CAC)
     try:
         data = read_card_data()
         if not data.get("success", False):
-            logger.warning(f"Hardware card read failed: {data.get('error')}")
             return jsonify(data), 500
         return jsonify(data), 200
     except Exception as e:
-        logger.exception("Unexpected error in read_smartcard")
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route("/api/smartcard/verify", methods=["POST"])
+@app.route("/cac-utils/api/smartcard/verify", methods=["POST"])
+def verify_smartcard_pin():
+    """Endpoint to verify the card PIN (Local hardware only)."""
+    pin = request.json.get("pin")
+    if not pin:
+        return jsonify({"success": False, "error": "PIN is required"}), 400
+    
+    logger.info(f"Attempting PIN verification for request from: {request.remote_addr}")
+    result = verify_pin(pin)
+    if result["success"]:
+        return jsonify(result), 200
+    else:
+        return jsonify(result), 401
+
 if __name__ == "__main__":
-    # Run the local server
     host = os.environ.get("FLASK_HOST", "0.0.0.0")
     port = int(os.environ.get("FLASK_PORT", 8000))
-    logger.info(f"Starting Smart Card Reader API on http://{host}:{port}")
+    logger.info(f"Starting API on http://{host}:{port}")
     app.run(host=host, port=port, debug=False)
