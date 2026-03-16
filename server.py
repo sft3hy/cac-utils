@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 from read_card import read_card_data
 
@@ -7,6 +7,12 @@ import os
 app = Flask(__name__)
 # Enable CORS for the local viewer.html to access this API
 CORS(app)
+
+
+@app.after_request
+def log_headers(response):
+    app.logger.info(f"Headers: {dict(request.headers)}")
+    return response
 
 
 @app.route("/")
