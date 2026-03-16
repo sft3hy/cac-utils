@@ -15,7 +15,7 @@ A collection of lightweight utilities for interacting with Department of Defense
 - **Containerized**: Includes `Dockerfile` and `docker-compose.yml` for easy deployment.
 - **Production Ready**: Helm charts included for Kubernetes deployments with Ingress support.
 
-## 🛠️ Prerequisites
+## Prerequisites
 
 - **Smart Card Reader**: A PC/SC compliant reader.
 - **Dependencies**:
