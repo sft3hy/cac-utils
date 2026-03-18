@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Card Dashboard</title>
+    <title>Smart Card Reader</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
@@ -391,7 +391,8 @@
             <div class="card-header">
                 <div class="btn-group">
                     <button class="btn" id="readBtn" onclick="readCard()">Analyze Card</button>
-                    <button class="btn btn-danger" id="verifyBtn" data-verify-pin="true" style="display: none;" onclick="openPinModal()">Verify PIN</button>
+                    <button class="btn btn-danger" id="verifyBtn" data-verify-pin="true" style="display: none;"
+                        onclick="openPinModal()">Verify PIN</button>
                 </div>
                 <button class="btn" style="border-color: var(--dim); color: var(--muted)"
                     onclick="clearAll()">Reset</button>
@@ -474,7 +475,7 @@
                 // Using relative path 'api/...' is safest when at /cac-utils/
                 const url = getApiUrl('api/smartcard/read');
                 console.log("Fetching from:", url);
-                
+
                 const response = await fetch(url);
 
                 // Check for HTML response (usually a 404 or redirect page)
